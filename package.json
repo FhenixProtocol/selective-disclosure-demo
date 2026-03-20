@@ -1,0 +1,41 @@
+{
+  "name": "selective-disclosure-demo",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "account": "pnpm --filter @selective-disclosure/hardhat account",
+    "chain": "pnpm --filter @selective-disclosure/hardhat chain",
+    "compile": "pnpm --filter @selective-disclosure/hardhat compile",
+    "deploy": "pnpm --filter @selective-disclosure/hardhat deploy",
+    "verify": "pnpm --filter @selective-disclosure/hardhat verify",
+    "hardhat-verify": "pnpm --filter @selective-disclosure/hardhat hardhat-verify",
+    "generate": "pnpm --filter @selective-disclosure/hardhat generate",
+    "flatten": "pnpm --filter @selective-disclosure/hardhat flatten",
+    "hardhat:lint": "pnpm --filter @selective-disclosure/hardhat lint",
+    "hardhat:format": "pnpm --filter @selective-disclosure/hardhat format",
+    "hardhat:test": "pnpm --filter @selective-disclosure/hardhat test",
+    "test": "pnpm hardhat:test",
+    "format": "pnpm next:format && pnpm hardhat:format",
+    "start": "pnpm --filter @selective-disclosure/nextjs dev",
+    "next:dev": "pnpm --filter @selective-disclosure/nextjs dev",
+    "next:build": "pnpm --filter @selective-disclosure/nextjs build",
+    "next:start": "pnpm --filter @selective-disclosure/nextjs start",
+    "next:lint": "pnpm --filter @selective-disclosure/nextjs lint",
+    "next:format": "pnpm --filter @selective-disclosure/nextjs format",
+    "next:check-types": "pnpm --filter @selective-disclosure/nextjs check-types",
+    "vercel": "pnpm --filter @selective-disclosure/nextjs vercel",
+    "vercel:yolo": "pnpm --filter @selective-disclosure/nextjs vercel:yolo",
+    "postinstall": "husky install",
+    "precommit": "lint-staged",
+    "dev": "concurrently -n next,hardhat -c magenta,blue \"pnpm next:dev\" \"pnpm chain\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.18.3"
+  }
+}
