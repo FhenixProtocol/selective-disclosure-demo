@@ -13,6 +13,7 @@
   "dependencies": {
     "@client/env": "workspace:*",
     "@client/ui": "workspace:*",
+    "@cofhe/sdk": "^0.4.0",
     "@hookform/resolvers": "^5.1.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.141.1",
@@ -22,7 +23,9 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "sonner": "catalog:",
-    "zod": "catalog:"
+    "viem": "^2.47.5",
+    "zod": "catalog:",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@client/config": "workspace:*",

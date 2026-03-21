@@ -14,11 +14,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
       {
-        title: "client",
+        title: "Selective Disclosure Demo",
       },
       {
         name: "description",
-        content: "client is a web application",
+        content: "FHE selective disclosure demo with CoFHE SDK",
       },
     ],
     links: [

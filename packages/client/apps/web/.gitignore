@@ -51,6 +51,9 @@ next-env.d.ts
 !.vscode/extensions.json
 .idea
 
+# WASM (copied by vite plugin at build time)
+public/tfhe_bg.wasm
+
 # Other
 dev-dist
 

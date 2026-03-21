@@ -84,6 +84,9 @@ importers:
       '@client/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@cofhe/sdk':
+        specifier: ^0.4.0
+        version: 0.4.0(@nomicfoundation/hardhat-ethers@3.0.9(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)))(@types/react@19.2.14)(@wagmi/core@2.22.1(@tanstack/query-core@5.91.2)(@types/react@19.2.14)(immer@10.2.0)(react@19.2.4)(typescript@5.5.4)(use-sync-external-store@1.6.0(react@19.2.4))(viem@2.47.5(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.3.6)))(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))(viem@2.47.5(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.3.6))
       '@hookform/resolvers':
         specifier: ^5.1.1
         version: 5.2.2(react-hook-form@7.71.2(react@19.2.4))
@@ -111,9 +114,15 @@ importers:
       sonner:
         specifier: 'catalog:'
         version: 2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      viem:
+        specifier: ^2.47.5
+        version: 2.47.5(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.3.6)
       zod:
         specifier: 'catalog:'
         version: 4.3.6
+      zustand:
+        specifier: ^5.0.12
+        version: 5.0.12(@types/react@19.2.14)(immer@10.2.0)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
       '@client/config':
         specifier: workspace:*
@@ -5747,6 +5756,26 @@ snapshots:
       - react
       - use-sync-external-store
 
+  '@cofhe/sdk@0.4.0(@nomicfoundation/hardhat-ethers@3.0.9(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)))(@types/react@19.2.14)(@wagmi/core@2.22.1(@tanstack/query-core@5.91.2)(@types/react@19.2.14)(immer@10.2.0)(react@19.2.4)(typescript@5.5.4)(use-sync-external-store@1.6.0(react@19.2.4))(viem@2.47.5(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.3.6)))(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))(viem@2.47.5(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.3.6))':
+    dependencies:
+      iframe-shared-storage: 1.0.34
+      immer: 10.2.0
+      node-tfhe: 0.11.1
+      tfhe: 0.11.1
+      tweetnacl: 1.0.3
+      viem: 2.47.5(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.3.6)
+      zod: 4.3.6
+      zustand: 5.0.12(@types/react@19.2.14)(immer@10.2.0)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
+    optionalDependencies:
+      '@nomicfoundation/hardhat-ethers': 3.0.9(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
+      '@wagmi/core': 2.22.1(@tanstack/query-core@5.91.2)(@types/react@19.2.14)(immer@10.2.0)(react@19.2.4)(typescript@5.5.4)(use-sync-external-store@1.6.0(react@19.2.4))(viem@2.47.5(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.3.6))
+      ethers: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      hardhat: 2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - '@types/react'
+      - react
+      - use-sync-external-store
+
   '@colors/colors@1.5.0':
     optional: true
 
@@ -6514,6 +6543,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@nomicfoundation/hardhat-ethers@3.0.9(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))':
+    dependencies:
+      debug: 4.4.3(supports-color@8.1.1)
+      ethers: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      hardhat: 2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)
+      lodash.isequal: 4.5.0
+    transitivePeerDependencies:
+      - supports-color
+    optional: true
+
   '@nomicfoundation/hardhat-ignition-ethers@0.15.17(@nomicfoundation/hardhat-ethers@3.0.9(ethers@6.13.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)))(@nomicfoundation/hardhat-ignition@0.15.16(@nomicfoundation/hardhat-verify@2.0.14(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)))(bufferutil@4.1.0)(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@nomicfoundation/ignition-core@0.15.15(bufferutil@4.1.0)(utf-8-validate@5.0.10))(ethers@6.13.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))':
     dependencies:
       '@nomicfoundation/hardhat-ethers': 3.0.9(ethers@6.13.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(hardhat@2.26.5(bufferutil@4.1.0)(ts-node@10.9.2(@types/node@22.19.15)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
@@ -6743,7 +6782,7 @@ snapshots:
 
   '@scure/bip32@1.7.0':
     dependencies:
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
