@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { FheTypes } from "@cofhe/sdk";
 import { PermitUtils, type Permit } from "@cofhe/sdk/permits";
-import { Shield, Eye, KeyRound, Share2, Trash2, Check as CheckIcon } from "lucide-react";
+import { Shield, Eye, KeyRound, Share2, Trash2, Check as CheckIcon, ShieldAlert } from "lucide-react";
+import { parsePermitError } from "@/lib/parse-permit-error";
 import { Button } from "@client/ui/components/button";
 import { Input } from "@client/ui/components/input";
 import { Label } from "@client/ui/components/label";
@@ -122,6 +123,33 @@ export function TokenHolder() {
 
   const getName = (p: Permit | undefined) => p?.name ?? "Unnamed";
 
+  const getTypeLabel = (p: Permit) => {
+    if (p.type === "self") return "Self";
+    if (p.type === "sharing") return "Shared";
+    if (p.type === "recipient") return "Received";
+    return p.type;
+  };
+
+  const formatExpiration = (exp: number) => {
+    if (!exp || exp === 0) return "No expiration";
+    const date = new Date(exp * 1000);
+    const now = new Date();
+    const isExpired = date < now;
+    const formatted = new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+    return isExpired ? `Expired ${formatted}` : formatted;
+  };
+
+  const isExpired = (exp: number) => {
+    if (!exp || exp === 0) return false;
+    return new Date(exp * 1000) < new Date();
+  };
+
+  const truncateAddr = (addr: string) =>
+    addr.length > 12 ? `${addr.slice(0, 6)}···${addr.slice(-4)}` : addr;
+
   const handleFetchBalance = async () => {
     if (!account) return;
     setError(null);
@@ -162,7 +190,7 @@ export function TokenHolder() {
       });
       setDecryptedBalance(formatted);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Decryption failed");
+      setError(parsePermitError(err));
     } finally {
       setLoading(null);
     }
@@ -215,62 +243,87 @@ export function TokenHolder() {
               {entries.map(([hash, permit]) => (
                 <div
                   key={hash}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-border/20 bg-secondary px-3 py-2"
+                  className={`rounded-lg border px-3 py-2.5 ${
+                    isExpired(permit.expiration)
+                      ? "border-destructive/20 bg-destructive/5"
+                      : "border-border/20 bg-secondary"
+                  }`}
                 >
-                  <div className="min-w-0 flex-1">
-                    <span className="text-xs font-medium text-foreground truncate block">
-                      {getName(permit)}
-                      {activePermitHash === hash ? (
-                        <span className="ml-1.5 rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] text-accent-foreground dark:text-accent">
-                          active
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-foreground truncate">
+                          {getName(permit)}
                         </span>
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                          permit.type === "self"
+                            ? "bg-accent/15 text-foreground"
+                            : "bg-primary/10 text-foreground"
+                        }`}>
+                          {getTypeLabel(permit)}
+                        </span>
+                        {activePermitHash === hash ? (
+                          <span className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground dark:text-accent">
+                            active
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                        <span className="font-mono">
+                          Issuer: {truncateAddr(permit.issuer)}
+                        </span>
+                        {permit.type !== "self" && permit.recipient !== "0x0000000000000000000000000000000000000000" ? (
+                          <span className="font-mono">
+                            Recipient: {truncateAddr(permit.recipient)}
+                          </span>
+                        ) : null}
+                        <span className={isExpired(permit.expiration) ? "text-destructive" : ""}>
+                          Exp: {formatExpiration(permit.expiration)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-0.5">
+                      {activePermitHash !== hash ? (
+                        <button
+                          onClick={() => {
+                            cofheClient.permits.selectActivePermit(hash);
+                            refresh();
+                          }}
+                          className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] hover:bg-foreground/5 hover:text-foreground"
+                          aria-label="Activate permit"
+                        >
+                          <Shield className="size-3.5" />
+                        </button>
                       ) : null}
-                    </span>
-                    <span className="font-mono text-[10px] text-muted-foreground truncate block">
-                      {hash}
-                    </span>
-                  </div>
-                  <div className="flex shrink-0 gap-0.5">
-                    {activePermitHash !== hash ? (
                       <button
                         onClick={() => {
-                          cofheClient.permits.selectActivePermit(hash);
-                          refresh();
+                          try {
+                            const exported = PermitUtils.export(permit);
+                            setExportedJson(JSON.stringify(exported, null, 2));
+                            setModalMode("export");
+                            setModalOpen(true);
+                          } catch (err) {
+                            setError(
+                              err instanceof Error ? err.message : "Export failed",
+                            );
+                          }
                         }}
                         className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] hover:bg-foreground/5 hover:text-foreground"
-                        aria-label="Activate permit"
+                        aria-label="Export permit"
                       >
-                        <Shield className="size-3.5" />
+                        <Share2 className="size-3.5" />
                       </button>
-                    ) : null}
-                    <button
-                      onClick={() => {
-                        try {
-                          const exported = PermitUtils.export(permit);
-                          setExportedJson(JSON.stringify(exported, null, 2));
-                          setModalMode("export");
-                          setModalOpen(true);
-                        } catch (err) {
-                          setError(
-                            err instanceof Error ? err.message : "Export failed",
-                          );
-                        }
-                      }}
-                      className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] hover:bg-foreground/5 hover:text-foreground"
-                      aria-label="Export permit"
-                    >
-                      <Share2 className="size-3.5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        cofheClient.permits.removePermit(hash);
-                        refresh();
-                      }}
-                      className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] hover:bg-destructive/10 hover:text-destructive"
-                      aria-label="Remove permit"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
+                      <button
+                        onClick={() => {
+                          cofheClient.permits.removePermit(hash);
+                          refresh();
+                        }}
+                        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] hover:bg-destructive/10 hover:text-destructive"
+                        aria-label="Remove permit"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -362,8 +415,14 @@ export function TokenHolder() {
         </div>
 
         {error ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {error}
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3">
+            <ShieldAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-destructive">
+                Operation Failed
+              </p>
+              <p className="mt-0.5 text-xs text-destructive/80">{error}</p>
+            </div>
           </div>
         ) : null}
       </div>
