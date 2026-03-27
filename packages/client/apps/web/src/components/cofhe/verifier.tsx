@@ -1,0 +1,213 @@
+import { useState } from "react";
+import { FheTypes } from "@cofhe/sdk";
+import { Button } from "@client/ui/components/button";
+import { Input } from "@client/ui/components/input";
+import { Label } from "@client/ui/components/label";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@client/ui/components/card";
+import { cofheClient } from "@/stores/cofhe-client";
+import { useCofheStore } from "@/stores/cofhe-store";
+import { MOCK_ERC7984_TOKEN } from "@/contracts/MockERC7984Token";
+
+interface VerifiedResult {
+  holder: string;
+  balance: string;
+  permitHash: string;
+  verifiedAt: string;
+}
+
+export function Verifier() {
+  const { status, bumpPermitVersion } = useCofheStore();
+
+  const [acpJson, setAcpJson] = useState("");
+  const [holderAddress, setHolderAddress] = useState("");
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [imported, setImported] = useState(false);
+  const [result, setResult] = useState<VerifiedResult | null>(null);
+
+  const isConnected = status === "connected";
+
+  const handleImportAcp = async () => {
+    setError(null);
+    setLoading("import");
+    try {
+      if (!acpJson.trim()) throw new Error("Paste the ACP JSON");
+      const parsed = JSON.parse(acpJson);
+      await cofheClient.permits.importShared(parsed);
+      bumpPermitVersion();
+      setImported(true);
+
+      // Try to extract the holder address from the permit issuer
+      if (parsed.issuer) {
+        setHolderAddress(parsed.issuer);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!holderAddress) return;
+    setError(null);
+    setResult(null);
+    setLoading("verify");
+    try {
+      const publicClient = cofheClient.connection.publicClient;
+      if (!publicClient) throw new Error("Not connected");
+
+      // Read the holder's encrypted balance
+      const ctHash = await publicClient.readContract({
+        address: MOCK_ERC7984_TOKEN.address,
+        abi: MOCK_ERC7984_TOKEN.abi,
+        functionName: "confidentialBalanceOf",
+        args: [holderAddress as `0x${string}`],
+      });
+
+      // Decrypt using the imported permit
+      const plaintext = await cofheClient
+        .decryptForView(ctHash as string, FheTypes.Uint64)
+        .execute();
+
+      const raw = BigInt(String(plaintext));
+      const formatted = (Number(raw) / 1e6).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6,
+      });
+
+      const activePermit = cofheClient.permits.getActivePermit();
+
+      setResult({
+        holder: holderAddress,
+        balance: formatted,
+        permitHash: activePermit?.hash ?? "unknown",
+        verifiedAt: new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC",
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Import ACP */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Paste ACP</CardTitle>
+          <CardDescription>
+            Paste the Access Control Permit JSON received from the token holder.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">ACP JSON</Label>
+            <textarea
+              placeholder="Paste the ACP JSON here..."
+              value={acpJson}
+              onChange={(e) => {
+                setAcpJson(e.target.value);
+                setImported(false);
+              }}
+              rows={6}
+              className="w-full rounded border bg-transparent p-2 font-mono text-xs resize-none focus:outline-none focus:border-ring"
+            />
+          </div>
+
+          {imported ? (
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-green-500" />
+              <span className="text-xs text-green-600 dark:text-green-400">
+                ACP imported and activated
+              </span>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              onClick={handleImportAcp}
+              disabled={!isConnected || !acpJson.trim() || loading === "import"}
+            >
+              {loading === "import" ? "Importing..." : "Import ACP"}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Verify Balance */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Verify Balance</CardTitle>
+          <CardDescription>
+            Use the imported ACP to read and decrypt the holder's encrypted
+            balance.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Holder Address</Label>
+            <Input
+              placeholder="0x..."
+              value={holderAddress}
+              onChange={(e) => setHolderAddress(e.target.value)}
+              disabled={!isConnected || loading === "verify"}
+            />
+          </div>
+
+          <Button
+            size="sm"
+            onClick={handleVerify}
+            disabled={
+              !isConnected || !imported || !holderAddress || loading === "verify"
+            }
+          >
+            {loading === "verify" ? "Verifying..." : "Verify Balance"}
+          </Button>
+
+          {result && (
+            <div className="rounded border border-green-500/30 bg-green-500/5 p-3 font-mono text-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-green-600 dark:text-green-400 font-semibold text-sm">
+                  Verified Encrypted Balance
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Holder:    </span>
+                {result.holder}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Asset:     </span>
+                cUSD
+              </div>
+              <div>
+                <span className="text-muted-foreground">Balance:   </span>
+                <span className="font-semibold">{result.balance} cUSD</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Permit ID: </span>
+                <span className="break-all">{result.permitHash}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Verified:  </span>
+                {result.verifiedAt}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {error && (
+        <div className="rounded border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
