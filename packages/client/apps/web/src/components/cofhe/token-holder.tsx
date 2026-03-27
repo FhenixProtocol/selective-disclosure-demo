@@ -347,14 +347,6 @@ export function TokenHolder() {
             >
               Share Permit
             </Button>
-            <Button
-              variant="fhenix"
-              size="sm"
-              onClick={() => openModal("import")}
-              disabled={!isConnected}
-            >
-              Import Permit
-            </Button>
           </div>
         </div>
 
