@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { FheTypes } from "@cofhe/sdk";
 import { PermitUtils, type Permit } from "@cofhe/sdk/permits";
-import { Shield, Eye, KeyRound, Share2, Trash2, Check as CheckIcon, ShieldAlert } from "lucide-react";
-import { parsePermitError } from "@/lib/parse-permit-error";
+import { Shield, KeyRound, Share2, Trash2, Check as CheckIcon, ShieldAlert } from "lucide-react";
 import { Button } from "@client/ui/components/button";
 import { Input } from "@client/ui/components/input";
 import { Label } from "@client/ui/components/label";
@@ -16,7 +14,6 @@ import {
 } from "@client/ui/components/dialog";
 import { cofheClient } from "@/stores/cofhe-client";
 import { useCofheStore } from "@/stores/cofhe-store";
-import { MOCK_ERC7984_TOKEN } from "@/contracts/MockERC7984Token";
 
 type ModalMode = "self" | "sharing" | "import" | "export";
 
@@ -29,15 +26,9 @@ function expirationDefault(): string {
 export function TokenHolder() {
   const {
     status,
-    account,
-    balanceCtHash,
-    decryptedBalance,
-    setBalanceCtHash,
-    setDecryptedBalance,
     bumpPermitVersion,
   } = useCofheStore();
 
-  const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Permit modal
@@ -64,7 +55,6 @@ export function TokenHolder() {
     /* not connected */
   }
   const entries = Object.entries(allPermits);
-  const hasActivePermit = !!activePermitHash;
 
   const refresh = () => {
     setRefreshKey((k) => k + 1);
@@ -149,52 +139,6 @@ export function TokenHolder() {
 
   const truncateAddr = (addr: string) =>
     addr.length > 12 ? `${addr.slice(0, 6)}···${addr.slice(-4)}` : addr;
-
-  const handleFetchBalance = async () => {
-    if (!account) return;
-    setError(null);
-    setLoading("balance");
-    try {
-      const publicClient = cofheClient.connection.publicClient;
-      if (!publicClient) throw new Error("Not connected");
-
-      const ctHash = await publicClient.readContract({
-        address: MOCK_ERC7984_TOKEN.address,
-        abi: MOCK_ERC7984_TOKEN.abi,
-        functionName: "confidentialBalanceOf",
-        args: [account as `0x${string}`],
-      });
-
-      setBalanceCtHash(ctHash as string);
-      setDecryptedBalance(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch balance");
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleDecryptBalance = async () => {
-    if (!balanceCtHash) return;
-    setError(null);
-    setLoading("decrypt");
-    try {
-      const plaintext = await cofheClient
-        .decryptForView(balanceCtHash, FheTypes.Uint64)
-        .execute();
-
-      const raw = BigInt(String(plaintext));
-      const formatted = (Number(raw) / 1e6).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 6,
-      });
-      setDecryptedBalance(formatted);
-    } catch (err) {
-      setError(parsePermitError(err));
-    } finally {
-      setLoading(null);
-    }
-  };
 
   return (
     <>
@@ -347,62 +291,6 @@ export function TokenHolder() {
             >
               Share Permit
             </Button>
-          </div>
-        </div>
-
-        {/* Balance */}
-        <div className="rounded-xl border border-border/30 bg-card p-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 dark:bg-accent/10">
-              <Eye className="size-4 text-foreground" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                Encrypted Balance
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Read and decrypt your confidential balance
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border/20 bg-secondary p-4">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Confidential Balance
-            </p>
-            <p className="mt-1 text-2xl font-semibold text-foreground tabular-nums">
-              {decryptedBalance
-                ? `${decryptedBalance} cUSD`
-                : balanceCtHash
-                  ? "Encrypted"
-                  : "—"}
-            </p>
-            {balanceCtHash && !decryptedBalance ? (
-              <p className="mt-1 font-mono text-[10px] text-muted-foreground break-all">
-                {balanceCtHash}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="fhenix"
-              size="sm"
-              onClick={handleFetchBalance}
-              disabled={!isConnected || loading === "balance"}
-            >
-              {loading === "balance" ? "Fetching…" : "Fetch Balance"}
-            </Button>
-            {balanceCtHash && !decryptedBalance ? (
-              <Button
-                variant="fhenix-cta"
-                size="sm"
-                onClick={handleDecryptBalance}
-                disabled={!hasActivePermit || loading === "decrypt"}
-              >
-                {loading === "decrypt" ? "Decrypting…" : "Decrypt"}
-              </Button>
-            ) : null}
           </div>
         </div>
 

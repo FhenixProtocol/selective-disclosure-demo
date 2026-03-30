@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ClientSetup } from "@/components/cofhe/client-setup";
+import { BalanceBar } from "@/components/cofhe/balance-bar";
 import { Mint } from "@/components/cofhe/mint";
 import { TokenHolder } from "@/components/cofhe/token-holder";
 import { Verifier } from "@/components/cofhe/verifier";
@@ -55,53 +56,60 @@ function HomeComponent() {
 
       {/* Responsive layout */}
       {isConnected ? (
-        <div className="grid gap-6 lg:grid-cols-[1fr_1fr] xl:grid-cols-[1fr_2fr]">
-          {/* Left column: wallet + mint */}
-          <div className="flex flex-col gap-4">
+        <>
+          {/* Top bars: wallet + balance — side by side on lg+ */}
+          <div className="grid gap-4 mb-6 lg:grid-cols-2">
             <ClientSetup />
-            <Mint />
+            <BalanceBar />
           </div>
 
-          {/* Right column: tabs + content */}
-          <div className="flex flex-col gap-4">
-            {/* Tab bar */}
-            <div className="flex items-center gap-2" role="tablist">
-              <button
-                role="tab"
-                aria-selected={tab === "holder"}
-                className={`text-sm font-semibold uppercase transition-[color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                  tab === "holder"
-                    ? "text-foreground underline underline-offset-4"
-                    : "text-foreground/50 hover:text-foreground/75"
-                }`}
-                onClick={() => setTab("holder")}
-              >
-                Token Holder
-              </button>
-              <span className="text-sm font-semibold text-muted-foreground">
-                |
-              </span>
-              <button
-                role="tab"
-                aria-selected={tab === "verifier"}
-                className={`text-sm font-semibold uppercase transition-[color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                  tab === "verifier"
-                    ? "text-foreground underline underline-offset-4"
-                    : "text-foreground/50 hover:text-foreground/75"
-                }`}
-                onClick={() => setTab("verifier")}
-              >
-                Compliance Verifier
-              </button>
+          <div className="grid gap-6 lg:grid-cols-[1fr_1fr] xl:grid-cols-[1fr_2fr]">
+            {/* Left column: mint */}
+            <div className="flex flex-col gap-4">
+              <Mint />
             </div>
 
-            <div role="tabpanel">
-              {tab === "holder" ? <TokenHolder /> : <Verifier />}
+            {/* Right column: tabs + content */}
+            <div className="flex flex-col gap-4">
+              {/* Tab bar */}
+              <div className="flex items-center gap-2" role="tablist">
+                <button
+                  role="tab"
+                  aria-selected={tab === "holder"}
+                  className={`text-sm font-semibold uppercase transition-[color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                    tab === "holder"
+                      ? "text-foreground underline underline-offset-4"
+                      : "text-foreground/50 hover:text-foreground/75"
+                  }`}
+                  onClick={() => setTab("holder")}
+                >
+                  Token Holder
+                </button>
+                <span className="text-sm font-semibold text-muted-foreground">
+                  |
+                </span>
+                <button
+                  role="tab"
+                  aria-selected={tab === "verifier"}
+                  className={`text-sm font-semibold uppercase transition-[color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                    tab === "verifier"
+                      ? "text-foreground underline underline-offset-4"
+                      : "text-foreground/50 hover:text-foreground/75"
+                  }`}
+                  onClick={() => setTab("verifier")}
+                >
+                  Compliance Verifier
+                </button>
+              </div>
+
+              <div role="tabpanel">
+                {tab === "holder" ? <TokenHolder /> : <Verifier />}
+              </div>
             </div>
           </div>
-        </div>
+        </>
       ) : (
-        <div className="max-w-lg">
+        <div className="max-w-lg mx-auto">
           <ClientSetup />
         </div>
       )}

@@ -5,13 +5,14 @@ import { Copy, Check, Wallet, Globe, Unplug } from "lucide-react";
 import { Button } from "@client/ui/components/button";
 import { cofheClient } from "@/stores/cofhe-client";
 import { useCofheStore } from "@/stores/cofhe-store";
+import { MOCK_ERC7984_TOKEN } from "@/contracts/MockERC7984Token";
 
 function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}···${address.slice(-4)}`;
 }
 
 export function ClientSetup() {
-  const { status, account, setStatus, setConnection, disconnect } =
+  const { status, account, setStatus, setConnection, disconnect, setBalanceCtHash, setDecryptedBalance } =
     useCofheStore();
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -48,6 +49,22 @@ export function ClientSetup() {
 
       const chain = await publicClient.getChainId();
       setConnection(addr, chain);
+
+      // Auto-fetch encrypted balance
+      publicClient
+        .readContract({
+          address: MOCK_ERC7984_TOKEN.address,
+          abi: MOCK_ERC7984_TOKEN.abi,
+          functionName: "confidentialBalanceOf",
+          args: [addr],
+        })
+        .then((ctHash) => {
+          setBalanceCtHash(ctHash as string);
+          setDecryptedBalance(null);
+        })
+        .catch(() => {
+          /* silently ignore — balance bar will show "—" */
+        });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Connection failed");
       setStatus("disconnected");
