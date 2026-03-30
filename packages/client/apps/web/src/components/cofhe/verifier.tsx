@@ -76,7 +76,7 @@ export function Verifier() {
       bumpPermitVersion();
 
       const issuer = parsed.issuer ?? "unknown";
-      const name = parsed.name ?? `ACP from ${truncateAddr(issuer)}`;
+      const name = parsed.name ?? `Disclosure from ${truncateAddr(issuer)}`;
       const id = `${issuer}-${Date.now()}`;
       const recipient = parsed.recipient ?? "";
       const type = parsed.type ?? "recipient";
@@ -162,7 +162,7 @@ export function Verifier() {
 
   return (
     <div className="space-y-4">
-      {/* Import ACP */}
+      {/* Import Disclosure Permits */}
       <div className="rounded-xl border border-border/30 bg-card p-4 space-y-3">
         <div className="flex items-center gap-3">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 dark:bg-accent/10">
@@ -170,20 +170,20 @@ export function Verifier() {
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              Import ACPs
+              Import Disclosure Permits
             </p>
             <p className="text-xs text-muted-foreground">
-              Paste Access Control Permits received from token holders
+              Paste disclosure permits received from token holders to attest their balance
             </p>
           </div>
         </div>
 
         <div className="space-y-1.5">
           <Label className="text-xs font-medium text-muted-foreground">
-            ACP JSON
+            Disclosure Permit JSON
           </Label>
           <textarea
-            placeholder="Paste an ACP JSON here…"
+            placeholder="Paste the disclosure permit JSON here…"
             value={acpJson}
             onChange={(e) => setAcpJson(e.target.value)}
             rows={4}
@@ -203,15 +203,15 @@ export function Verifier() {
               Importing…
             </>
           ) : (
-            "Import ACP"
+            "Import Permit"
           )}
         </Button>
 
-        {/* Imported ACPs list */}
+        {/* Imported disclosure permits list */}
         {importedAcps.length > 0 ? (
           <div className="space-y-1.5">
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Imported ({importedAcps.length})
+              Imported Permits ({importedAcps.length})
             </p>
             {importedAcps.map((rawAcp) => {
               // Backfill fields for ACPs stored before the schema was extended
@@ -286,7 +286,7 @@ export function Verifier() {
         ) : null}
       </div>
 
-      {/* Verify Balance */}
+      {/* Attest Balance */}
       {selectedAcp ? (
         <div className="rounded-xl border border-border/30 bg-card p-4 space-y-3">
           <div className="flex items-center gap-3">
@@ -295,10 +295,10 @@ export function Verifier() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">
-                Verify Balance
+                Attest Balance
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                Using ACP from{" "}
+                Using disclosure permit from{" "}
                 <span className="font-mono">{truncateAddr(selectedAcp.issuer)}</span>
               </p>
             </div>
@@ -311,10 +311,10 @@ export function Verifier() {
               {loading === "verify" ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  Verifying…
+                  Attesting…
                 </>
               ) : (
-                "Verify Balance"
+                "Attest Balance"
               )}
             </Button>
           </div>
@@ -322,7 +322,7 @@ export function Verifier() {
           {result ? (
             <div className="rounded-lg border border-accent/30 bg-accent/8 dark:bg-accent/5 p-4 space-y-2">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
-                Verified Encrypted Balance
+                Attestation Result
               </p>
               <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 font-mono text-xs">
                 <span className="text-muted-foreground">Holder</span>
@@ -339,7 +339,7 @@ export function Verifier() {
                 <span className="text-foreground break-all">
                   {result.permitHash}
                 </span>
-                <span className="text-muted-foreground">Verified</span>
+                <span className="text-muted-foreground">Attested</span>
                 <span className="text-foreground">{result.verifiedAt}</span>
               </div>
             </div>
@@ -348,7 +348,7 @@ export function Verifier() {
       ) : importedAcps.length > 0 ? (
         <div className="rounded-lg border border-border/20 bg-secondary px-4 py-3 text-center">
           <p className="text-xs text-muted-foreground">
-            Select an ACP above to verify a holder's balance
+            Select a disclosure permit above to attest a holder's balance
           </p>
         </div>
       ) : null}
@@ -359,7 +359,7 @@ export function Verifier() {
           <ShieldAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
           <div className="min-w-0">
             <p className="text-xs font-medium text-destructive">
-              Verification Failed
+              Attestation Failed
             </p>
             <p className="mt-0.5 text-xs text-destructive/80">
               {error}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PermitUtils, type Permit } from "@cofhe/sdk/permits";
-import { Shield, KeyRound, Share2, Trash2, Check as CheckIcon, ShieldAlert } from "lucide-react";
+import { Shield, KeyRound, Share2, Trash2, Check as CheckIcon, ShieldAlert, Eye } from "lucide-react";
 import { Button } from "@client/ui/components/button";
 import { Input } from "@client/ui/components/input";
 import { Label } from "@client/ui/components/label";
@@ -15,33 +15,47 @@ import {
 import { cofheClient } from "@/stores/cofhe-client";
 import { useCofheStore } from "@/stores/cofhe-store";
 
-type ModalMode = "self" | "sharing" | "import" | "export";
-
 function expirationDefault(): string {
   const d = new Date();
   d.setDate(d.getDate() + 7);
   return d.toISOString().slice(0, 16);
 }
 
-export function TokenHolder() {
-  const {
-    status,
-    bumpPermitVersion,
-  } = useCofheStore();
+function formatExpiration(exp: number) {
+  if (!exp || exp === 0) return "No expiration";
+  const date = new Date(exp * 1000);
+  const expired = date < new Date();
+  const formatted = new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+  return expired ? `Expired ${formatted}` : formatted;
+}
 
-  const [error, setError] = useState<string | null>(null);
+function isExpired(exp: number) {
+  if (!exp || exp === 0) return false;
+  return new Date(exp * 1000) < new Date();
+}
 
-  // Permit modal
+function getName(p: Permit | undefined) {
+  return p?.name ?? "Unnamed";
+}
+
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+
+// ---------------------------------------------------------------------------
+// Self Permits — left column
+// ---------------------------------------------------------------------------
+
+export function SelfPermits() {
+  const { status, bumpPermitVersion } = useCofheStore();
+
   const [refreshKey, setRefreshKey] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<ModalMode>("self");
   const [permitName, setPermitName] = useState("");
-  const [recipient, setRecipient] = useState("");
   const [expiration, setExpiration] = useState(expirationDefault);
-  const [importData, setImportData] = useState("");
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
-  const [exportedJson, setExportedJson] = useState<string | null>(null);
 
   const isConnected = status === "connected";
 
@@ -54,56 +68,34 @@ export function TokenHolder() {
   } catch {
     /* not connected */
   }
-  const entries = Object.entries(allPermits);
+
+  const selfEntries = Object.entries(allPermits).filter(([, p]) => p.type === "self");
 
   const refresh = () => {
     setRefreshKey((k) => k + 1);
     bumpPermitVersion();
   };
 
-  const openModal = (mode: ModalMode) => {
+  const openModal = () => {
     setPermitName("");
-    setRecipient("");
     setExpiration(expirationDefault());
-    setImportData("");
     setModalError(null);
-    setExportedJson(null);
-    setModalMode(mode);
     setModalOpen(true);
   };
 
-  const handleModalAction = async () => {
+  const handleCreate = async () => {
     setModalError(null);
     setModalLoading(true);
     try {
       const exp = Math.floor(new Date(expiration).getTime() / 1000);
       const issuer = cofheClient.connection.account!;
-
-      if (modalMode === "self") {
-        await cofheClient.permits.getOrCreateSelfPermit(undefined, undefined, {
-          issuer,
-          name: permitName || undefined,
-          expiration: exp,
-        });
-        refresh();
-        setModalOpen(false);
-      } else if (modalMode === "sharing") {
-        if (!recipient) throw new Error("Recipient address is required");
-        const permit = await cofheClient.permits.createSharing({
-          issuer,
-          recipient,
-          name: permitName || `ACP → ${recipient.slice(0, 8)}…`,
-          expiration: exp,
-        });
-        refresh();
-        setExportedJson(JSON.stringify(PermitUtils.export(permit), null, 2));
-        setModalMode("export");
-      } else if (modalMode === "import") {
-        if (!importData) throw new Error("Paste the exported permit JSON");
-        await cofheClient.permits.importShared(JSON.parse(importData));
-        refresh();
-        setModalOpen(false);
-      }
+      await cofheClient.permits.getOrCreateSelfPermit(undefined, undefined, {
+        issuer,
+        name: permitName || undefined,
+        expiration: exp,
+      });
+      refresh();
+      setModalOpen(false);
     } catch (err) {
       setModalError(err instanceof Error ? err.message : "Operation failed");
     } finally {
@@ -111,80 +103,264 @@ export function TokenHolder() {
     }
   };
 
-  const getName = (p: Permit | undefined) => p?.name ?? "Unnamed";
+  return (
+    <>
+      <div className="rounded-xl border border-border/30 bg-card p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 dark:bg-accent/10">
+            <KeyRound className="size-4 text-foreground" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">Self Permits</p>
+            <p className="text-xs text-muted-foreground">
+              Decrypt your own on-chain encrypted data
+            </p>
+          </div>
+        </div>
 
-  const getTypeLabel = (p: Permit) => {
-    if (p.type === "self") return "Self";
-    if (p.type === "sharing") return "Shared";
-    if (p.type === "recipient") return "Received";
-    return p.type;
+        {/* Active permit status */}
+        {activePermitHash && allPermits[activePermitHash]?.type === "self" ? (
+          <div className="rounded-lg border border-accent/30 bg-accent/8 dark:bg-accent/5 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <CheckIcon className="size-3.5 text-accent" />
+              <span className="text-xs font-medium text-foreground">
+                Active: {getName(allPermits[activePermitHash])}
+              </span>
+            </div>
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground break-all">
+              {activePermitHash}
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border/20 bg-secondary px-3 py-2">
+            <span className="text-xs text-muted-foreground">
+              No active self permit
+            </span>
+          </div>
+        )}
+
+        {/* Self permit list */}
+        {selfEntries.length > 0 ? (
+          <div className="space-y-1">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              All Self Permits ({selfEntries.length})
+            </p>
+            {selfEntries.map(([hash, permit]) => (
+              <div
+                key={hash}
+                className={`rounded-lg border px-3 py-2.5 ${
+                  isExpired(permit.expiration)
+                    ? "border-destructive/20 bg-destructive/5"
+                    : "border-border/20 bg-secondary"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-foreground truncate">
+                        {getName(permit)}
+                      </span>
+                      {activePermitHash === hash ? (
+                        <span className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground dark:text-accent">
+                          active
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1 text-[10px] text-muted-foreground">
+                      <span className={isExpired(permit.expiration) ? "text-destructive" : ""}>
+                        Exp: {formatExpiration(permit.expiration)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-0.5">
+                    {activePermitHash !== hash ? (
+                      <button
+                        onClick={() => {
+                          cofheClient.permits.selectActivePermit(hash);
+                          refresh();
+                        }}
+                        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] hover:bg-foreground/5 hover:text-foreground"
+                        aria-label="Activate permit"
+                      >
+                        <Shield className="size-3.5" />
+                      </button>
+                    ) : null}
+                    <button
+                      onClick={() => {
+                        cofheClient.permits.removePermit(hash);
+                        refresh();
+                      }}
+                      className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="Remove permit"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <Button
+          variant="fhenix-cta"
+          size="sm"
+          onClick={openModal}
+          disabled={!isConnected}
+        >
+          Create Self Permit
+        </Button>
+      </div>
+
+      {/* Create Self Permit Modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-xl border-border/30 bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold text-foreground">
+              Create Self Permit
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Decrypt your own on-chain encrypted data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                Name (optional)
+              </Label>
+              <Input
+                placeholder="My self permit"
+                value={permitName}
+                onChange={(e) => setPermitName(e.target.value)}
+                className="h-9 rounded-lg border-border/30 bg-secondary px-3 text-sm text-foreground"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                Expiration
+              </Label>
+              <Input
+                type="datetime-local"
+                value={expiration}
+                onChange={(e) => setExpiration(e.target.value)}
+                className="h-9 rounded-lg border-border/30 bg-secondary px-3 text-sm text-foreground"
+              />
+            </div>
+            {modalError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {modalError}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="fhenix-cta"
+              size="sm"
+              onClick={handleCreate}
+              disabled={modalLoading}
+            >
+              {modalLoading ? "Processing…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Selective Disclosure — right column
+// ---------------------------------------------------------------------------
+
+export function SelectiveDisclosure() {
+  const { status, bumpPermitVersion } = useCofheStore();
+
+  const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"sharing" | "export">("sharing");
+  const [permitName, setPermitName] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [expiration, setExpiration] = useState(expirationDefault);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [exportedJson, setExportedJson] = useState<string | null>(null);
+
+  const isConnected = status === "connected";
+
+  void refreshKey;
+  let allPermits: Record<string, Permit> = {};
+  try {
+    allPermits = cofheClient.permits.getPermits() ?? {};
+  } catch {
+    /* not connected */
+  }
+
+  const sharedEntries = Object.entries(allPermits).filter(([, p]) => p.type === "sharing");
+
+  const refresh = () => {
+    setRefreshKey((k) => k + 1);
+    bumpPermitVersion();
   };
 
-  const formatExpiration = (exp: number) => {
-    if (!exp || exp === 0) return "No expiration";
-    const date = new Date(exp * 1000);
-    const now = new Date();
-    const isExpired = date < now;
-    const formatted = new Intl.DateTimeFormat(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(date);
-    return isExpired ? `Expired ${formatted}` : formatted;
+  const openModal = () => {
+    setPermitName("");
+    setRecipient("");
+    setExpiration(expirationDefault());
+    setModalError(null);
+    setExportedJson(null);
+    setModalMode("sharing");
+    setModalOpen(true);
   };
 
-  const isExpired = (exp: number) => {
-    if (!exp || exp === 0) return false;
-    return new Date(exp * 1000) < new Date();
+  const handleCreate = async () => {
+    setModalError(null);
+    setModalLoading(true);
+    try {
+      if (!recipient) throw new Error("Verifier address is required");
+      const exp = Math.floor(new Date(expiration).getTime() / 1000);
+      const issuer = cofheClient.connection.account!;
+      const permit = await cofheClient.permits.createSharing({
+        issuer,
+        recipient,
+        name: permitName || undefined,
+        expiration: exp,
+      });
+      refresh();
+      setExportedJson(JSON.stringify(PermitUtils.export(permit), null, 2));
+      setModalMode("export");
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : "Operation failed");
+    } finally {
+      setModalLoading(false);
+    }
   };
-
-  const truncateAddr = (addr: string) =>
-    addr.length > 12 ? `${addr.slice(0, 6)}···${addr.slice(-4)}` : addr;
 
   return (
     <>
       <div className="space-y-4">
-        {/* Permits */}
         <div className="rounded-xl border border-border/30 bg-card p-4 space-y-3">
           <div className="flex items-center gap-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 dark:bg-accent/10">
-              <KeyRound className="size-4 text-foreground" />
+              <Eye className="size-4 text-foreground" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-foreground">Permits</p>
+              <p className="text-sm font-semibold text-foreground">
+                Selective Disclosure
+              </p>
               <p className="text-xs text-muted-foreground">
-                Manage decryption access to your encrypted data
+                Grant a compliance verifier permission to attest your confidential balance
               </p>
             </div>
           </div>
 
-          {/* Active permit status */}
-          {activePermitHash ? (
-            <div className="rounded-lg border border-accent/30 bg-accent/8 dark:bg-accent/5 px-3 py-2">
-              <div className="flex items-center gap-2">
-                <CheckIcon className="size-3.5 text-accent" />
-                <span className="text-xs font-medium text-foreground">
-                  Active: {getName(allPermits[activePermitHash])}
-                </span>
-              </div>
-              <p className="mt-1 font-mono text-[10px] text-muted-foreground break-all">
-                {activePermitHash}
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-border/20 bg-secondary px-3 py-2">
-              <span className="text-xs text-muted-foreground">
-                No active permit
-              </span>
-            </div>
-          )}
-
-          {/* Permit list */}
-          {entries.length > 0 ? (
+          {/* Disclosure permits list */}
+          {sharedEntries.length > 0 ? (
             <div className="space-y-1">
               <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                All Permits ({entries.length})
+                Disclosure Permits ({sharedEntries.length})
               </p>
-              {entries.map(([hash, permit]) => (
+              {sharedEntries.map(([hash, permit]) => (
                 <div
                   key={hash}
                   className={`rounded-lg border px-3 py-2.5 ${
@@ -195,50 +371,28 @@ export function TokenHolder() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-foreground truncate">
-                          {getName(permit)}
-                        </span>
-                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                          permit.type === "self"
-                            ? "bg-accent/15 text-foreground"
-                            : "bg-primary/10 text-foreground"
-                        }`}>
-                          {getTypeLabel(permit)}
-                        </span>
-                        {activePermitHash === hash ? (
-                          <span className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground dark:text-accent">
-                            active
+                      {permit.name ? (
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-xs font-medium text-foreground truncate">
+                            {permit.name}
                           </span>
-                        ) : null}
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
-                        <span className="font-mono">
-                          Issuer: {truncateAddr(permit.issuer)}
-                        </span>
-                        {permit.type !== "self" && permit.recipient !== "0x0000000000000000000000000000000000000000" ? (
-                          <span className="font-mono">
-                            Recipient: {truncateAddr(permit.recipient)}
+                        </div>
+                      ) : null}
+                      {permit.recipient !== ZERO_ADDR ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground shrink-0">Verifier</span>
+                          <span className="font-mono text-[10px] text-foreground break-all">
+                            {permit.recipient}
                           </span>
-                        ) : null}
+                        </div>
+                      ) : null}
+                      <div className="mt-1 text-[10px] text-muted-foreground">
                         <span className={isExpired(permit.expiration) ? "text-destructive" : ""}>
-                          Exp: {formatExpiration(permit.expiration)}
+                          Expires: {formatExpiration(permit.expiration)}
                         </span>
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-0.5">
-                      {activePermitHash !== hash ? (
-                        <button
-                          onClick={() => {
-                            cofheClient.permits.selectActivePermit(hash);
-                            refresh();
-                          }}
-                          className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] hover:bg-foreground/5 hover:text-foreground"
-                          aria-label="Activate permit"
-                        >
-                          <Shield className="size-3.5" />
-                        </button>
-                      ) : null}
                       <button
                         onClick={() => {
                           try {
@@ -253,7 +407,7 @@ export function TokenHolder() {
                           }
                         }}
                         className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] hover:bg-foreground/5 hover:text-foreground"
-                        aria-label="Export permit"
+                        aria-label="Export disclosure permit"
                       >
                         <Share2 className="size-3.5" />
                       </button>
@@ -263,7 +417,7 @@ export function TokenHolder() {
                           refresh();
                         }}
                         className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Remove permit"
+                        aria-label="Remove disclosure permit"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
@@ -272,26 +426,22 @@ export function TokenHolder() {
                 </div>
               ))}
             </div>
-          ) : null}
+          ) : (
+            <div className="rounded-lg border border-border/20 bg-secondary px-3 py-2">
+              <span className="text-xs text-muted-foreground">
+                No disclosure permits yet — grant one to a compliance verifier
+              </span>
+            </div>
+          )}
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="fhenix-cta"
-              size="sm"
-              onClick={() => openModal("self")}
-              disabled={!isConnected}
-            >
-              Create Self Permit
-            </Button>
-            <Button
-              variant="fhenix"
-              size="sm"
-              onClick={() => openModal("sharing")}
-              disabled={!isConnected}
-            >
-              Share Permit
-            </Button>
-          </div>
+          <Button
+            variant="fhenix-cta"
+            size="sm"
+            onClick={openModal}
+            disabled={!isConnected}
+          >
+            Grant Disclosure
+          </Button>
         </div>
 
         {error ? (
@@ -307,25 +457,17 @@ export function TokenHolder() {
         ) : null}
       </div>
 
-      {/* Permit Modal */}
+      {/* Grant Disclosure Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="sm:max-w-md rounded-xl border-border/30 bg-card">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold text-foreground">
-              {modalMode === "self" && "Create Self Permit"}
-              {modalMode === "sharing" && "Create Sharing Permit"}
-              {modalMode === "import" && "Import Shared Permit"}
-              {modalMode === "export" && "Exported Permit"}
+              {modalMode === "sharing" ? "Grant Disclosure" : "Disclosure Permit Created"}
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              {modalMode === "self" &&
-                "Decrypt your own on-chain encrypted data."}
-              {modalMode === "sharing" &&
-                "Share decryption access with another address."}
-              {modalMode === "export" &&
-                "Share this JSON with the recipient."}
-              {modalMode === "import" &&
-                "Paste the permit JSON from the issuer."}
+              {modalMode === "sharing"
+                ? "Create a disclosure permit so a compliance verifier can attest your confidential balance."
+                : "Copy this permit and send it to the compliance verifier."}
             </DialogDescription>
           </DialogHeader>
 
@@ -348,18 +490,14 @@ export function TokenHolder() {
               </div>
             ) : null}
 
-            {modalMode === "self" || modalMode === "sharing" ? (
+            {modalMode === "sharing" ? (
               <>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-muted-foreground">
                     Name (optional)
                   </Label>
                   <Input
-                    placeholder={
-                      modalMode === "self"
-                        ? "My self permit"
-                        : "Share with Alice"
-                    }
+                    placeholder="Disclosure for Alice"
                     value={permitName}
                     onChange={(e) => setPermitName(e.target.value)}
                     className="h-9 rounded-lg border-border/30 bg-secondary px-3 text-sm text-foreground"
@@ -376,38 +514,21 @@ export function TokenHolder() {
                     className="h-9 rounded-lg border-border/30 bg-secondary px-3 text-sm text-foreground"
                   />
                 </div>
-                {modalMode === "sharing" ? (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-muted-foreground">
-                      Recipient Address
-                    </Label>
-                    <Input
-                      name="recipient-address"
-                      autoComplete="off"
-                      spellCheck={false}
-                      placeholder="0x…"
-                      value={recipient}
-                      onChange={(e) => setRecipient(e.target.value)}
-                      className="h-9 rounded-lg border-border/30 bg-secondary px-3 text-sm text-foreground"
-                    />
-                  </div>
-                ) : null}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Verifier Address
+                  </Label>
+                  <Input
+                    name="recipient-address"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="0x…"
+                    value={recipient}
+                    onChange={(e) => setRecipient(e.target.value)}
+                    className="h-9 rounded-lg border-border/30 bg-secondary px-3 text-sm text-foreground"
+                  />
+                </div>
               </>
-            ) : null}
-
-            {modalMode === "import" ? (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">
-                  Permit JSON
-                </Label>
-                <textarea
-                  placeholder="Paste the exported permit JSON…"
-                  value={importData}
-                  onChange={(e) => setImportData(e.target.value)}
-                  rows={6}
-                  className="w-full rounded-lg border border-border/30 bg-secondary p-3 font-mono text-xs text-foreground resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </div>
             ) : null}
 
             {modalError ? (
@@ -430,14 +551,10 @@ export function TokenHolder() {
               <Button
                 variant="fhenix-cta"
                 size="sm"
-                onClick={handleModalAction}
+                onClick={handleCreate}
                 disabled={modalLoading}
               >
-                {modalLoading
-                  ? "Processing…"
-                  : modalMode === "import"
-                    ? "Import & Sign"
-                    : "Create"}
+                {modalLoading ? "Processing…" : "Grant Disclosure"}
               </Button>
             )}
           </DialogFooter>
