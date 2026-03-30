@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PermitUtils, type Permit } from "@cofhe/sdk/permits";
-import { Shield, KeyRound, Share2, Trash2, Check as CheckIcon, ShieldAlert, Eye } from "lucide-react";
+import { Shield, KeyRound, Share2, Trash2, Check as CheckIcon, ShieldAlert, Eye, Link as LinkIcon } from "lucide-react";
 import { Button } from "@client/ui/components/button";
 import { Input } from "@client/ui/components/input";
 import { Label } from "@client/ui/components/label";
@@ -14,6 +14,7 @@ import {
 } from "@client/ui/components/dialog";
 import { cofheClient } from "@/stores/cofhe-client";
 import { useCofheStore } from "@/stores/cofhe-store";
+import { encodePermitUrl } from "@/lib/permit-url";
 
 function expirationDefault(): string {
   const d = new Date();
@@ -480,13 +481,23 @@ export function SelectiveDisclosure() {
                   rows={8}
                   className="w-full rounded-lg border border-border/30 bg-secondary p-3 font-mono text-[10px] text-foreground resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
-                <Button
-                  variant="fhenix"
-                  size="sm"
-                  onClick={() => navigator.clipboard.writeText(exportedJson)}
-                >
-                  Copy to Clipboard
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="fhenix"
+                    size="sm"
+                    onClick={() => navigator.clipboard.writeText(exportedJson)}
+                  >
+                    Copy JSON
+                  </Button>
+                  <Button
+                    variant="fhenix-cta"
+                    size="sm"
+                    onClick={() => navigator.clipboard.writeText(encodePermitUrl(exportedJson))}
+                  >
+                    <LinkIcon className="size-3.5 mr-1.5" />
+                    Copy Shareable Link
+                  </Button>
+                </div>
               </div>
             ) : null}
 
