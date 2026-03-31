@@ -273,8 +273,14 @@ export function SelfPermits() {
 // Selective Disclosure — right column
 // ---------------------------------------------------------------------------
 
+function isZeroCtHash(hash: string | null): boolean {
+  if (!hash) return false;
+  return /^0x0+$/.test(hash);
+}
+
 export function SelectiveDisclosure() {
-  const { status, bumpPermitVersion } = useCofheStore();
+  const { status, balanceCtHash, bumpPermitVersion } = useCofheStore();
+  const hasZeroBalance = isZeroCtHash(balanceCtHash);
 
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -439,10 +445,15 @@ export function SelectiveDisclosure() {
             variant="fhenix-cta"
             size="sm"
             onClick={openModal}
-            disabled={!isConnected}
+            disabled={!isConnected || hasZeroBalance || !balanceCtHash}
           >
             Grant Disclosure
           </Button>
+          {hasZeroBalance ? (
+            <p className="text-[10px] text-muted-foreground">
+              You need a non-zero balance to grant disclosure
+            </p>
+          ) : null}
         </div>
 
         {error ? (

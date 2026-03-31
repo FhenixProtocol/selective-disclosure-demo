@@ -4,7 +4,6 @@ import { ClientSetup } from "@/components/cofhe/client-setup";
 import { BalanceBar } from "@/components/cofhe/balance-bar";
 import { Verifier } from "@/components/cofhe/verifier";
 import { Certificate } from "@/components/cofhe/certificate";
-import { cofheClient } from "@/stores/cofhe-client";
 import { useCofheStore, type ImportedAcp } from "@/stores/cofhe-store";
 import { decodePermitFromHash } from "@/lib/permit-url";
 
@@ -17,7 +16,7 @@ function truncateAddr(addr: string) {
 }
 
 function VerifierPage() {
-  const { status, bumpPermitVersion, addImportedAcp } = useCofheStore();
+  const { status, addImportedAcp } = useCofheStore();
   const isConnected = status === "connected";
 
   const [pendingPermit, setPendingPermit] = useState<Record<string, unknown> | null>(null);
@@ -32,14 +31,13 @@ function VerifierPage() {
     }
   }, []);
 
-  const handleImport = async () => {
+  const handleImport = () => {
     if (!pendingPermit) return;
     setImportError(null);
     setImportStatus("loading");
     try {
-      await cofheClient.permits.importShared(JSON.parse(JSON.stringify(pendingPermit)));
-      bumpPermitVersion();
-
+      // Store in zustand only — SDK import deferred to attestation time
+      // via PermitUtils.importSharedAndSign so we never change the active permit
       const issuer = (pendingPermit.issuer as string) ?? "unknown";
       const name = (pendingPermit.name as string) ?? `Disclosure from ${truncateAddr(issuer)}`;
       const id = `${issuer}-${Date.now()}`;
@@ -57,18 +55,14 @@ function VerifierPage() {
         raw: JSON.stringify(pendingPermit),
       };
       addImportedAcp(newAcp);
-      setImportStatus("success");
+
+      // Import done — clear hash and go straight to the verifier view
+      window.history.replaceState(null, "", "/verifier");
+      setPendingPermit(null);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Failed to import permit");
       setImportStatus("error");
     }
-  };
-
-  const handleContinue = () => {
-    // Clear the hash and exit certificate view
-    window.history.replaceState(null, "", "/verifier");
-    setPendingPermit(null);
-    setImportStatus("idle");
   };
 
   // Certificate flow — show when there's a pending permit from URL
@@ -80,7 +74,6 @@ function VerifierPage() {
         importStatus={importStatus}
         error={importError}
         onImport={handleImport}
-        onContinue={handleContinue}
       />
     );
   }

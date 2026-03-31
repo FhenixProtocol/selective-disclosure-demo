@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FheTypes } from "@cofhe/sdk";
+import { PermitUtils } from "@cofhe/sdk/permits";
 import { FileKey, Search, Check, Trash2, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@client/ui/components/button";
 import { Label } from "@client/ui/components/label";
@@ -46,7 +47,6 @@ const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 export function Verifier() {
   const {
     status,
-    bumpPermitVersion,
     importedAcps,
     selectedAcpId,
     addImportedAcp,
@@ -62,19 +62,18 @@ export function Verifier() {
   const isConnected = status === "connected";
   const selectedAcp = importedAcps.find((a) => a.id === selectedAcpId);
 
-  const handleImportAcp = async () => {
+  const handleImportAcp = () => {
     setError(null);
     setLoading("import");
     try {
-      if (!acpJson.trim()) throw new Error("Paste the ACP JSON");
+      if (!acpJson.trim()) throw new Error("Paste the disclosure permit JSON");
       let parsed = JSON.parse(acpJson);
       if (typeof parsed === "string") {
         parsed = JSON.parse(parsed);
       }
 
-      await cofheClient.permits.importShared(parsed);
-      bumpPermitVersion();
-
+      // Store in zustand only — SDK import deferred to attestation time
+      // via PermitUtils.importSharedAndSign so we never change the active permit
       const issuer = parsed.issuer ?? "unknown";
       const name = parsed.name ?? `Disclosure from ${truncateAddr(issuer)}`;
       const id = `${issuer}-${Date.now()}`;
@@ -86,7 +85,7 @@ export function Verifier() {
       addImportedAcp(newAcp);
       setAcpJson("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to import ACP");
+      setError(err instanceof Error ? err.message : "Failed to import permit");
     } finally {
       setLoading(null);
     }
@@ -99,19 +98,10 @@ export function Verifier() {
     }
   };
 
-  const handleSelectAcp = async (acp: ImportedAcp) => {
+  const handleSelectAcp = (acp: ImportedAcp) => {
     setSelectedAcpId(acp.id);
     setResult(null);
     setError(null);
-
-    try {
-      let parsed = JSON.parse(acp.raw);
-      if (typeof parsed === "string") parsed = JSON.parse(parsed);
-      await cofheClient.permits.importShared(parsed);
-      bumpPermitVersion();
-    } catch {
-      // Already imported, just selecting
-    }
   };
 
   const handleVerify = async () => {
@@ -121,7 +111,13 @@ export function Verifier() {
     setLoading("verify");
     try {
       const publicClient = cofheClient.connection.publicClient;
-      if (!publicClient) throw new Error("Not connected");
+      const walletClient = cofheClient.connection.walletClient;
+      if (!publicClient || !walletClient) throw new Error("Not connected");
+
+      // Build the permit object without touching the active permit in the store
+      let parsed = JSON.parse(selectedAcp.raw);
+      if (typeof parsed === "string") parsed = JSON.parse(parsed);
+      const permit = await PermitUtils.importSharedAndSign(parsed, publicClient, walletClient);
 
       const ctHash = await publicClient.readContract({
         address: MOCK_ERC7984_TOKEN.address,
@@ -130,8 +126,10 @@ export function Verifier() {
         args: [selectedAcp.issuer as `0x${string}`],
       });
 
+      // Use .withPermit() to decrypt without changing the active permit
       const plaintext = await cofheClient
         .decryptForView(ctHash as string, FheTypes.Uint64)
+        .withPermit(permit)
         .execute();
 
       const raw = BigInt(String(plaintext));
@@ -140,12 +138,10 @@ export function Verifier() {
         maximumFractionDigits: 6,
       });
 
-      const activePermit = cofheClient.permits.getActivePermit();
-
       setResult({
         holder: selectedAcp.issuer,
         balance: formatted,
-        permitHash: activePermit?.hash ?? "unknown",
+        permitHash: permit.hash ?? "unknown",
         verifiedAt:
           new Intl.DateTimeFormat(undefined, {
             dateStyle: "medium",

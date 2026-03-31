@@ -1,4 +1,4 @@
-import { ShieldCheck, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { ShieldCheck, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@client/ui/components/button";
 import { ClientSetup } from "@/components/cofhe/client-setup";
 
@@ -8,7 +8,6 @@ interface CertificateProps {
   importStatus: "idle" | "loading" | "success" | "error";
   error?: string | null;
   onImport: () => void;
-  onContinue: () => void;
 }
 
 function formatExpiration(exp: number) {
@@ -26,7 +25,6 @@ export function Certificate({
   importStatus,
   error,
   onImport,
-  onContinue,
 }: CertificateProps) {
   const issuer = (permit.issuer as string) ?? "Unknown";
   const recipient = (permit.recipient as string) ?? "Unknown";
@@ -115,24 +113,7 @@ export function Certificate({
         </div>
 
         {/* Action area */}
-        {importStatus === "success" ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/8 dark:bg-accent/5 px-3 py-2">
-              <CheckCircle2 className="size-4 text-accent" />
-              <span className="text-xs font-medium text-foreground">
-                Disclosure permit imported successfully
-              </span>
-            </div>
-            <Button
-              variant="fhenix-cta"
-              size="sm"
-              className="w-full"
-              onClick={onContinue}
-            >
-              Continue to Verification
-            </Button>
-          </div>
-        ) : !isConnected ? (
+        {!isConnected ? (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground text-center">
               Connect the recipient wallet to import this disclosure permit

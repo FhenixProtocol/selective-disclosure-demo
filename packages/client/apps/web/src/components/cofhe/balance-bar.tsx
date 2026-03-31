@@ -6,6 +6,11 @@ import { Button } from "@client/ui/components/button";
 import { cofheClient } from "@/stores/cofhe-client";
 import { useCofheStore } from "@/stores/cofhe-store";
 
+function isZeroCtHash(hash: string | null): boolean {
+  if (!hash) return false;
+  return /^0x0+$/.test(hash);
+}
+
 export function BalanceBar() {
   const {
     account,
@@ -14,6 +19,8 @@ export function BalanceBar() {
     setDecryptedBalance,
     permitVersion,
   } = useCofheStore();
+
+  const hasZeroBalance = isZeroCtHash(balanceCtHash);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +79,11 @@ export function BalanceBar() {
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               Confidential Balance
             </p>
-            {decryptedBalance ? (
+            {hasZeroBalance ? (
+              <span className="text-sm font-semibold text-foreground tabular-nums">
+                0.00 cUSD
+              </span>
+            ) : decryptedBalance ? (
               <span className="text-sm font-semibold text-foreground tabular-nums">
                 {decryptedBalance} cUSD
               </span>
@@ -91,7 +102,7 @@ export function BalanceBar() {
           </div>
 
           {/* Decrypt button — only when encrypted and not yet decrypted */}
-          {balanceCtHash && !decryptedBalance ? (
+          {balanceCtHash && !hasZeroBalance && !decryptedBalance ? (
             <div className="relative group shrink-0">
               <Button
                 variant="fhenix-cta"
