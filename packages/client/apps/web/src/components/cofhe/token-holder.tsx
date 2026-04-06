@@ -270,7 +270,7 @@ export function SelfPermits() {
 }
 
 // ---------------------------------------------------------------------------
-// Selective Disclosure — right column
+// Access Delegation — right column
 // ---------------------------------------------------------------------------
 
 function isZeroCtHash(hash: string | null): boolean {
@@ -353,7 +353,7 @@ export function SelectiveDisclosure() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-foreground">
-                Selective Disclosure
+                Access Delegation
               </p>
               <p className="text-xs text-muted-foreground">
                 Grant a compliance verifier permission to attest your confidential balance
