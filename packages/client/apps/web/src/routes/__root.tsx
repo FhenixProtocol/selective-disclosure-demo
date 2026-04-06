@@ -1,6 +1,7 @@
 import { Toaster } from "@client/ui/components/sonner";
 import { HeadContent, Outlet, Link, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { Analytics } from "@vercel/analytics/react";
 
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -43,6 +44,7 @@ function RootComponent() {
         <AppShell />
         <Toaster richColors />
       </ThemeProvider>
+      <Analytics />
       <TanStackRouterDevtools position="bottom-left" />
     </>
   );
