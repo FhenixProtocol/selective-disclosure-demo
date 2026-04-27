@@ -56,7 +56,7 @@
     "@changesets/cli": "^2.30.0",
     "@cofhe/hardhat-plugin": "0.4.0",
     "@cofhe/mock-contracts": "0.4.0",
-    "@cofhe/sdk": "0.4.0",
+    "@cofhe/sdk": "0.5.1",
     "@ethersproject/abi": "~5.7.0",
     "@ethersproject/providers": "~5.7.2",
     "@fhenixprotocol/cofhe-contracts": "0.1.3",

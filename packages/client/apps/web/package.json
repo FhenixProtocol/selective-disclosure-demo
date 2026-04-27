@@ -13,7 +13,7 @@
   "dependencies": {
     "@client/env": "workspace:*",
     "@client/ui": "workspace:*",
-    "@cofhe/sdk": "^0.4.0",
+    "@cofhe/sdk": "^0.5.1",
     "@hookform/resolvers": "^5.1.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.141.1",
